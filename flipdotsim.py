@@ -1,83 +1,94 @@
-from Tkinter import *
 import thread
 import socket
-
+import pygame
+from pygame.locals import *
 
 class FlipdotSim():
-    def __init__(self, imageSize = (40,16), udpPort = 2323):
+    def __init__(self, 
+                 imageSize = (40,16),
+                 pixelSize = 10, 
+                 udpPort = 2323):
         self.udpPort = udpPort
-        self.flipdotMatrixSimulatorWidget = FlipdotMatrixSimulatorWidget(imageSize)
+        self.flipdotMatrixSimulatorWidget = FlipdotMatrixSimulatorWidget(imageSize, pixelSize)
         self.udpHostSocket = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
         self.udpHostSocket.bind(("", self.udpPort))
 
     def run(self):
-        thread.start_new_thread(self.RunServer, ())
-        mainloop()
+        self.RunServer()
 
     def RunServer(self):
         try: 
             while True:
                 rawData = self.udpHostSocket.recv(4096)
-                self.flipdotMatrixSimulatorWidget.show(self.PacketToArray(rawData))
+                imageArray = ImageArrayAdapter().convertPacketToImageArray(rawData)
+                self.flipdotMatrixSimulatorWidget.show(imageArray)
         finally: 
             self.udpHostSocket.close() 
-            
-    def PacketToArray(self, udpPacketStr):
-        arrayOfBinaryInts = []
+
+class ImageArrayAdapter():
+    def __init__(self):
+        self.arrayOfBinaryInts = []
+
+    def convertPacketToImageArray(self, udpPacketStr):
+        self.arrayOfBinaryInts = []
         byteArray = bytearray(udpPacketStr)
         for byte in byteArray:
-            byteValue = int(byte)
-            for i in range(8):
-                if byteValue/(2**(7-i)) > 0:
-                    arrayOfBinaryInts.append(1)
-                else: 
-                    arrayOfBinaryInts.append(0)
-                byteValue = byteValue%(2**(7-i))
-        return arrayOfBinaryInts
-            
-        
+            self.__appendByteToArrayOfBinaryInts(byte)
+        return self.arrayOfBinaryInts
+    
+    def __appendByteToArrayOfBinaryInts(self, byte):
+        byteValue = int(byte)
+        for i in range(8):
+            if byteValue/(2**(7-i)) > 0:
+                self.arrayOfBinaryInts.append(1)
+            else: 
+                self.arrayOfBinaryInts.append(0)
+            byteValue = byteValue%(2**(7-i))
+
 
 class FlipdotMatrixSimulatorWidget():
     BLACKCOLOR = 0
     WHITECOLOR = 1
     
     def __init__(self,
-                 imageSize = (40,16)): 
+                 imageSize = (40,16),
+                 pixelSize = 10): 
         self.imageSize = imageSize
-        self.master = Tk()
-        self.canvas = Canvas(self.master, width=imageSize[0]*10, height=imageSize[1]*10)
-        self.canvas.pack()
-        self.initEmptyPixels()
+        self.pixelSize = pixelSize
+
+        pygame.init()
+        self.screen = pygame.display.set_mode((imageSize[0]*pixelSize, imageSize[1]*pixelSize))
+        self.screen.fill((255,255,255))
+        thread.start_new_thread(self.watchCloseThread, ())
         
-    def initEmptyPixels(self):
-        self.clearPixels
-        for xValue in range(self.imageSize[0]):
-            for yValue in range(self.imageSize[1]):
-                self.addPixel(xValue, yValue, self.BLACKCOLOR)
+    def watchCloseThread(self):
+        while True:
+            for event in pygame.event.get():
+                if event.type in (QUIT, QUIT):
+                    import os
+                    os.kill(os.getpid(), 9)  
 
     def show(self, imageArray):
-        self.clearPixels()
-        for xValue in range(self.imageSize[0]):
-            for yValue in range(self.imageSize[1]):
+        for yValue in range(self.imageSize[1]):
+            for xValue in range(self.imageSize[0]):
                 i = self.imageSize[0]*yValue + xValue
                 color = imageArray[i]
-                self.addPixel(xValue, yValue, color)
-        self.canvas.update_idletasks()
+                self.updatePixel(xValue, yValue, color)
+        pygame.display.update()
 
     def clearPixels(self):
-        self.canvas.delete(ALL)
-        self.canvas.update_idletasks()
-    
-    def addPixel(self, xValue, yValue, color):
-        xmin = xValue * 10
-        xmax = xmin + 9
-        ymin = yValue * 10
-        ymax = ymin + 9
+        for xValue in range(self.imageSize[0]):
+            for yValue in range(self.imageSize[1]):
+                self.updatePixel(xValue, yValue, self.BLACKCOLOR)
+        
+    def updatePixel(self, xValue, yValue, color):
+        surface = pygame.Surface((self.pixelSize-1, self.pixelSize-1))
         if color == self.BLACKCOLOR:
-                rectcolor = "black"
+                rectcolor = (0,0,0)
         else:
-                rectcolor = "white"
-        self.canvas.create_rectangle(xmin, ymin, xmax, ymax, fill=rectcolor)
-
+                rectcolor = (255,255,255)
+        surface.fill(rectcolor)
+        self.screen.blit(surface, (xValue*self.pixelSize, yValue*self.pixelSize))
+        
 if __name__ == '__main__':
-    FlipdotSim().run()
+    FlipdotSim(imageSize=(40,16), pixelSize = 10, udpPort=2323).run()
