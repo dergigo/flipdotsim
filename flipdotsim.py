@@ -2,11 +2,13 @@ from Tkinter import *
 import thread
 import socket
 
-
 class FlipdotSim():
-    def __init__(self, imageSize = (40,16), udpPort = 2323):
+    def __init__(self, 
+                 imageSize = (40,16),
+                 pixelSize = 10, 
+                 udpPort = 2323):
         self.udpPort = udpPort
-        self.flipdotMatrixSimulatorWidget = FlipdotMatrixSimulatorWidget(imageSize)
+        self.flipdotMatrixSimulatorWidget = FlipdotMatrixSimulatorWidget(imageSize, pixelSize)
         self.udpHostSocket = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
         self.udpHostSocket.bind(("", self.udpPort))
 
@@ -49,15 +51,17 @@ class FlipdotMatrixSimulatorWidget():
     WHITECOLOR = 1
     
     def __init__(self,
-                 imageSize = (40,16)): 
+                 imageSize = (40,16),
+                 pixelSize = 10): 
         self.imageSize = imageSize
+        self.pixelSize = pixelSize
         self.master = Tk()
         self.canvas = Canvas(self.master, width=imageSize[0]*10, height=imageSize[1]*10)
         self.canvas.pack()
         self.initEmptyPixels()
         
     def initEmptyPixels(self):
-        self.clearPixels
+        self.clearPixels()
         for xValue in range(self.imageSize[0]):
             for yValue in range(self.imageSize[1]):
                 self.addPixel(xValue, yValue, self.BLACKCOLOR)
@@ -76,10 +80,10 @@ class FlipdotMatrixSimulatorWidget():
         self.canvas.update_idletasks()
     
     def addPixel(self, xValue, yValue, color):
-        xmin = xValue * 10
-        xmax = xmin + 9
-        ymin = yValue * 10
-        ymax = ymin + 9
+        xmin = xValue * self.pixelSize
+        xmax = xmin + self.pixelSize-1
+        ymin = yValue * self.pixelSize
+        ymax = ymin + self.pixelSize-1
         if color == self.BLACKCOLOR:
                 rectcolor = "black"
         else:
@@ -87,4 +91,4 @@ class FlipdotMatrixSimulatorWidget():
         self.canvas.create_rectangle(xmin, ymin, xmax, ymax, fill=rectcolor)
 
 if __name__ == '__main__':
-    FlipdotSim().run()
+    FlipdotSim(imageSize=(40,16), pixelSize = 10, udpPort=2323).run()
