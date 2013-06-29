@@ -18,24 +18,31 @@ class FlipdotSim():
         try: 
             while True:
                 rawData = self.udpHostSocket.recv(4096)
-                self.flipdotMatrixSimulatorWidget.show(self.PacketToArray(rawData))
+                imageArray = ImageArrayAdapter().convertPacketToImageArray(rawData)
+                self.flipdotMatrixSimulatorWidget.show(imageArray)
         finally: 
             self.udpHostSocket.close() 
-            
-    def PacketToArray(self, udpPacketStr):
-        arrayOfBinaryInts = []
+
+class ImageArrayAdapter():
+    def __init__(self):
+        self.arrayOfBinaryInts = []
+
+    def convertPacketToImageArray(self, udpPacketStr):
+        self.arrayOfBinaryInts = []
         byteArray = bytearray(udpPacketStr)
         for byte in byteArray:
-            byteValue = int(byte)
-            for i in range(8):
-                if byteValue/(2**(7-i)) > 0:
-                    arrayOfBinaryInts.append(1)
-                else: 
-                    arrayOfBinaryInts.append(0)
-                byteValue = byteValue%(2**(7-i))
-        return arrayOfBinaryInts
-            
-        
+            self.__appendByteToArrayOfBinaryInts(byte)
+        return self.arrayOfBinaryInts
+    
+    def __appendByteToArrayOfBinaryInts(self, byte):
+        byteValue = int(byte)
+        for i in range(8):
+            if byteValue/(2**(7-i)) > 0:
+                self.arrayOfBinaryInts.append(1)
+            else: 
+                self.arrayOfBinaryInts.append(0)
+            byteValue = byteValue%(2**(7-i))
+
 
 class FlipdotMatrixSimulatorWidget():
     BLACKCOLOR = 0
