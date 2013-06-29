@@ -66,7 +66,8 @@ class FlipdotMatrixSimulatorWidget():
             for event in pygame.event.get():
                 if event.type in (QUIT, QUIT):
                     import os
-                    os.kill(os.getpid(), 9)  
+                    os.kill(os.getpid(), 9)
+            pygame.time.delay(500)  
 
     def show(self, imageArray):
         for yValue in range(self.imageSize[1]):
